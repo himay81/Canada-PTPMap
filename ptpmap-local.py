@@ -41,18 +41,23 @@ skips = [
 
 # Load all of the CSV while skipping unneeded fields
 csvd = pd.read_csv('TAFL_LTAF.csv', names=names, usecols=[n for n in names if n not in skips])
+
 # Temporarily drop locations with OccupiedBandwidthKHz = 0 as they appear to be relay points
 csvd = csvd.drop(csvd[csvd['OccupiedBandwidthKHz'] == 0].index)
+
 # zip() latitude and longitude together to ease identifying paired links
 csvd['LatLong'] = list(zip(csvd['Latitude'], csvd['Longitude']))
+
 # Slice out all TX and RX records for Service=(2), Subservice=(200)
 txRecords = csvd[csvd['Service'] == 2][csvd['Subservice'].isin([200])][csvd['TXRX'] == 'TX']
 rxRecords = csvd[csvd['Service'] == 2][csvd['Subservice'].isin([200])][csvd['TXRX'] == 'RX']
+
 # Uncomment this block for a separate set of mP2P (Subservice=(201)) locations
 # txRec201 = csvd[csvd['Service'] == 2][csvd['Subservice'].isin([201])][csvd['TXRX'] == 'TX']
 # rxRec201 = csvd[csvd['Service'] == 2][csvd['Subservice'].isin([201])][csvd['TXRX'] == 'RX']
 
 print("Found {0} TX licenses and {1} RX licenses".format(txRecords.shape[0], rxRecords.shape[0]))
+
 # Get a list of all the unique AuthorizationNumbers to iterate through
 txLicAuthNumSet = set(txRecords['AuthorizationNumber'])
 
@@ -77,28 +82,24 @@ print("Finding RX licenses done, starting KML generation")
 
 kml = simplekml.Kml()
 
-bellStyle = simplekml.Style()
-bellStyle.linestyle.width = 2
+stl = {"linestyle": simplekml.LineStyle(width = 2)}
+
+bellStyle = simplekml.Style(stl)
 bellStyle.linestyle.color = 'ffff0000'  # Blue
 
-rogersStyle = simplekml.Style()
-rogersStyle.linestyle.width = 2
+rogersStyle = simplekml.Style(stl)
 rogersStyle.linestyle.color = 'ff0000ff'  # Red
 
-telusStyle = simplekml.Style()
-telusStyle.linestyle.width = 2
+telusStyle = simplekml.Style(stl)
 telusStyle.linestyle.color = 'ff3CFF14'  # Green
 
-xplornetStyle = simplekml.Style()
-xplornetStyle.linestyle.width = 2
+xplornetStyle = simplekml.Style(stl)
 xplornetStyle.linestyle.color = 'FF1478A0'  # Brown
 
-freedomStyle = simplekml.Style()
-freedomStyle.linestyle.width = 2
+freedomStyle = simplekml.Style(stl)
 freedomStyle.linestyle.color = 'ff14B4FF'  # Orange
 
-otherStyle = simplekml.Style()
-otherStyle.linestyle.width = 2
+otherStyle = simplekml.Style(stl)
 otherStyle.linestyle.color = 'ffFF78F0'  # Magenta
 
 
