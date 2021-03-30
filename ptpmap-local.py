@@ -61,22 +61,6 @@ for idx, row in txRecords.iterrows():
         rxRecords['Frequency'] == row['Frequency']].index[0]
     print("TX index {0} matches RX index {1}".format(idx, rxIdx))
 
-for row in taflCsv:
-    if row['Service'] == '2' and row['Subservice'] in ['200', '201'] and row['TXRX'] == 'TX':
-        txRecords.append(row)
-        txLicAuthNumSet.add(row['AuthorizationNumber'])
-        txFreqSet.add(row['Frequency'])
-    # txLatSet.add(row['Latitude'])
-    # txLongSet.add(row['Longitude'])
-    if row['TXRX'] == 'RX':
-        allRxRecs.append(row)
-print("Found " + str(len(txRecords)) + " licenses. Finding matching RX licenses")
-cleanrx = []
-for rec in allRxRecs:
-    if rec['AuthorizationNumber'] in txLicAuthNumSet and rec['Frequency'] in txFreqSet:
-        #            and rec['Latitude'] not in txLatSet and rec['Longitude'] not in txLongSet:
-        cleanrx.append(rec)
-
 for txRecord in progressbar.progressbar(txRecords):
     link = {'tx': txRecord}
     rxRecords = []
