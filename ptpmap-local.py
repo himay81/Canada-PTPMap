@@ -84,23 +84,13 @@ kml = simplekml.Kml()
 
 stl = {"linestyle": simplekml.LineStyle(width = 2)}
 
-bellStyle = simplekml.Style(stl)
-bellStyle.linestyle.color = 'ffff0000'  # Blue
-
-rogersStyle = simplekml.Style(stl)
-rogersStyle.linestyle.color = 'ff0000ff'  # Red
-
-telusStyle = simplekml.Style(stl)
-telusStyle.linestyle.color = 'ff3CFF14'  # Green
-
-xplornetStyle = simplekml.Style(stl)
+[bellStyle, rogersStyle, telusStyle, xplornetStyle, freedomStyle, otherStyle] = [simplekml.Style(stl) for i in range(6)]
+bellStyle.linestyle.color =     'ffff0000'  # Blue
+rogersStyle.linestyle.color =   'ff0000ff'  # Red
+telusStyle.linestyle.color =    'ff3CFF14'  # Green
 xplornetStyle.linestyle.color = 'FF1478A0'  # Brown
-
-freedomStyle = simplekml.Style(stl)
-freedomStyle.linestyle.color = 'ff14B4FF'  # Orange
-
-otherStyle = simplekml.Style(stl)
-otherStyle.linestyle.color = 'ffFF78F0'  # Magenta
+freedomStyle.linestyle.color =  'ff14B4FF'  # Orange
+otherStyle.linestyle.color =    'ffFF78F0'  # Magenta
 
 
 def styleLink(licName, kmlLink):
