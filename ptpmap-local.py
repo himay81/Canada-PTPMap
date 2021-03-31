@@ -1,8 +1,19 @@
 #!/usr/bin/env python3
 
 import pandas as pd
-import progressbar as pg
+from progressbar import progressbar as pg   # This is progressbar2 in conda, not progressbar
 import simplekml
+from timeit import default_timer as timer
+import warnings
+import logging
+
+# pandas warnings about reindexing get kind of annoying
+warnings.filterwarnings('ignore')
+
+# Setup logging
+logging.basicConfig(filename="ptpmap-log.txt",
+                    format='%(asctime)s\t%(levelname)s\t%(message)s',
+                    level=logging.DEBUG)
 
 # Field headers for input CSV file
 names = [
@@ -40,9 +51,14 @@ skips = [
 ]
 
 # Load all of the CSV while skipping unneeded fields
+csvstart = timer()
 csvd = pd.read_csv('TAFL_LTAF.csv', names=names, usecols=[n for n in names if n not in skips])
+csvstop = timer()
+print("Loaded TAFL_LTAF.csv into memory in {0:2.3f} seconds".format(csvstop - csvstart))
 
 # Temporarily drop locations with OccupiedBandwidthKHz = 0 as they appear to be relay points
+logging.info("Dropping {0} rows for lacking OccupiedBandwidthKHz values of 0".format(
+    csvd[csvd['OccupiedBandwidthKHz'] == 0].shape[0]))
 csvd = csvd.drop(csvd[csvd['OccupiedBandwidthKHz'] == 0].index)
 
 # zip() latitude and longitude together to ease identifying paired links
@@ -61,10 +77,17 @@ print("Found {0} TX licenses and {1} RX licenses".format(txRecords.shape[0], rxR
 # Get a list of all the unique AuthorizationNumbers to iterate through
 txLicAuthNumSet = set(txRecords['AuthorizationNumber'])
 
-for idx, row in txRecords.iterrows():
-    rxIdx = rxRecords[rxRecords['AuthorizationNumber'] == row['AuthorizationNumber']][
+for idx, row in pg(txRecords.iterrows(), redirect_stdout=True):
+    try:
+        rxIdx = rxRecords[rxRecords['AuthorizationNumber'] == row['AuthorizationNumber']][
         rxRecords['Frequency'] == row['Frequency']].index[0]
+    except:
+        logging.info("AuthorizationNumber {0} does not have any obvious RX pair. Skipping...".format(
+            row['AuthorizationNumber']))
+        continue
     print("TX index {0} matches RX index {1}".format(idx, rxIdx))
+
+
 
 for txRecord in progressbar.progressbar(txRecords):
     link = {'tx': txRecord}
