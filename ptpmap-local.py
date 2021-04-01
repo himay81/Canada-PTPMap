@@ -4,6 +4,7 @@ import pandas as pd
 from progressbar import progressbar as pg   # This is progressbar2 in conda, not progressbar
 import simplekml
 from timeit import default_timer as timer
+import multiprocessing as mp
 import warnings
 import logging
 
@@ -50,6 +51,27 @@ skips = [
     'HorizontalPower', 'VerticalPower', 'StandbyTransmitterInformation'
 ]
 
+def linkTxRx(authNum):
+    tx = txRecords[txRecords['AuthorizationNumber'] == authNum].iloc[0]
+    rx = rxRecords[rxRecords['AuthorizationNumber'] == authNum].iloc[0]
+    l = {
+        'licName': tx['LicenseeName'], 'servDate': tx['InserviceDate'],
+        'freq': tx['Frequency'], 'bandwidth': tx['OccupiedBandwidthKHz'],
+        'txLoc': {
+            'lat': tx['Latitude'], 'long': tx['Longitude'], 'alt': tx['HeightAboveGroundLevel']
+            },
+        'rxLoc': {
+            'lat': rx['Latitude'], 'long': rx['Longitude'], 'alt': rx['HeightAboveGroundLevel']
+        },
+        'anaCap': tx['AnalogCapacity'], 'digCap': tx['DigitalCapacity']
+    }
+    if tx['Frequency'] == rx['Frequency']:
+        l['link'] = True
+    else:
+        l['link'] = False
+    return l
+
+
 # Load all of the CSV while skipping unneeded fields
 csvstart = timer()
 csvd = pd.read_csv('TAFL_LTAF.csv', names=names, usecols=[n for n in names if n not in skips])
@@ -86,8 +108,6 @@ for idx, row in pg(txRecords.iterrows(), redirect_stdout=True):
             row['AuthorizationNumber']))
         continue
     print("TX index {0} matches RX index {1}".format(idx, rxIdx))
-
-
 
 for txRecord in progressbar.progressbar(txRecords):
     link = {'tx': txRecord}
