@@ -7,6 +7,7 @@ from timeit import default_timer as timer
 import multiprocessing as mp
 import warnings
 import logging
+from SiteLink import SiteLink
 
 # pandas warnings about reindexing get kind of annoying
 warnings.filterwarnings('ignore')
@@ -17,85 +18,43 @@ logging.basicConfig(filename="ptpmap-log.txt",
                     level=logging.DEBUG)
 
 # Field headers for input CSV file
-names = [
-    'TXRX', 'Frequency', 'FrequencyRecordIdentifier', 'RegulatoryService', 'CommunicationType',
-    'ConformityToFrequencyPlan',
-    'FrequencyAllocationName', 'Channel', 'LegacySystemInternationalCoordinationNumber', 'AnalogDigital',
-    'OccupiedBandwidthKHz',
-    'DesignationOfEmission', 'ModulationType', 'FiltrationInstalled', 'TxERPdBW', 'TxTransmitterPowerW',
-    'TotalLossesDB', 'AnalogCapacity',
-    'DigitalCapacity', 'RxUnfadedSignalLevel', 'RxThresholdSignalLevelBer10e', 'AntManufacturer', 'AntModel', 'AntGain',
-    'AntPattern', 'HalfpowerBeamwidth',
-    'FrontToBackRatio', 'Polarization', 'HeightAboveGroundLevel', 'AzimuthOfMainLobe', 'VerticalElevationAngle',
-    'StationLocation', 'LicenseeStationReference',
-    'Callsign', 'StationType', 'ITUClassOfStation', 'StationCostCategory', 'NumberOfIdenticalStations',
-    'ReferenceIdentifier', 'Provinces', 'Latitude',
-    'Longitude', 'GroundElevationAboveSealevel', 'AntennaStructureHeightAboveGroundLevel', 'CongestionZone',
-    'RadiusOfOperation', 'SatelliteName',
-    'AuthorizationNumber', 'Service', 'Subservice', 'LicenceType', 'AuthorizationStatus', 'InserviceDate',
-    'AccountNumber', 'LicenseeName', 'LicenseeAddress',
-    'OperationalStatus', 'StationClassification', 'HorizontalPower', 'VerticalPower', 'StandbyTransmitterInformation'
-]
-
-# Fields to skip on import; can be adjusted later on as necessary
-skips = [
-    'RegulatoryService', 'CommunicationType', 'ConformityToFrequencyPlan', 'FrequencyAllocationName', 'Channel',
-    'LegacySystemInternationalCoordinationNumber', 'AnalogDigital', 'DesignationOfEmission', 'ModulationType',
-    'FiltrationInstalled', 'TxERPdBW', 'TxTransmitterPowerW', 'TotalLossesDB', 'RxUnfadedSignalLevel',
-    'RxThresholdSignalLevelBer10e', 'AntManufacturer', 'AntModel', 'AntGain', 'AntPattern', 'HalfpowerBeamwidth',
-    'FrontToBackRatio', 'Polarization', 'AzimuthOfMainLobe', 'VerticalElevationAngle', 'StationLocation',
-    'LicenseeStationReference', 'Callsign', 'StationType', 'ITUClassOfStation', 'StationCostCategory',
-    'NumberOfIdenticalStations', 'ReferenceIdentifier', 'Provinces', 'GroundElevationAboveSealevel',
-    'AntennaStructureHeightAboveGroundLevel', 'CongestionZone', 'RadiusOfOperation', 'SatelliteName', 'LicenceType',
-    'AuthorizationStatus', 'AccountNumber', 'LicenseeAddress', 'OperationalStatus', 'StationClassification',
-    'HorizontalPower', 'VerticalPower', 'StandbyTransmitterInformation'
-]
+# Dict keys are field headers, values represent whether they are imported or not.
+names = {
+    'TXRX': True,                       'Frequency': True,              'FrequencyRecordIdentifier': True,
+    'RegulatoryService': False,         'CommunicationType': False,     'ConformityToFrequencyPlan': False,
+    'FrequencyAllocationName': False,   'Channel': False,               'LegacySystemInternationalCoordinationNumber': False,
+    'AnalogDigital': False,             'OccupiedBandwidthKHz': True,   'DesignationOfEmission': False,
+    'ModulationType': False,            'FiltrationInstalled': False,   'TxERPdBW': False,
+    'TxTransmitterPowerW': False,       'TotalLossesDB': False,         'AnalogCapacity': True,
+    'DigitalCapacity': True,            'RxUnfadedSignalLevel': False,  'RxThresholdSignalLevelBer10e': False,
+    'AntManufacturer': False,           'AntModel': False,              'AntGain': False,
+    'AntPattern': False,                'HalfpowerBeamwidth': False,    'FrontToBackRatio': False,
+    'Polarization': False,              'HeightAboveGroundLevel': True, 'AzimuthOfMainLobe': False,
+    'VerticalElevationAngle': False,    'StationLocation': False,       'LicenseeStationReference': False,
+    'Callsign': False,                  'StationType': False,           'ITUClassOfStation': False,
+    'StationCostCategory': False,       'NumberOfIdenticalStations': False, 'ReferenceIdentifier': False,
+    'Provinces': False,                 'Latitude': True,               'Longitude': True,
+    'GroundElevationAboveSealevel': False, 'AntennaStructureHeightAboveGroundLevel': False, 'CongestionZone': False,
+    'RadiusOfOperation': False,         'SatelliteName': False,         'AuthorizationNumber': True,
+    'Service': True,                    'Subservice': True,             'LicenceType': False,
+    'AuthorizationStatus': False,       'InserviceDate': True,          'AccountNumber': False,
+    'LicenseeName': True,               'LicenseeAddress': False,       'OperationalStatus': False,
+    'StationClassification': False,     'HorizontalPower': False,       'VerticalPower': False,
+    'StandbyTransmitterInformation': False
+}
 
 def linkTxRx(authNum, txRecs, rxRecs):
     l = []
     tx = txRecs[txRecs['AuthorizationNumber'] == authNum]
     rx = rxRecs[rxRecs['AuthorizationNumber'] == authNum]
     for i, f in tx.iterrows():
-        try:
-            l.append({
-                'licName':  f['LicenseeName'],  'servDate': f['InserviceDate'],
-                'freq':     f['Frequency'],     'bandwidth': f['OccupiedBandwidthKHz'],
-                'txLoc':    {
-                    'lat':  f['Latitude'],      'long': f['Longitude'],     'alt': f['HeightAboveGroundLevel']
-                    },
-                'rxLoc':    {
-                    'lat':  rx[rx['Frequency'] == f['Frequency']].iloc[0]['Latitude'],
-                    'long': rx[rx['Frequency'] == f['Frequency']].iloc[0]['Longitude'],
-                    'alt':  rx[rx['Frequency'] == f['Frequency']].iloc[0]['HeightAboveGroundLevel']
-                },
-                'anaCap':   f['AnalogCapacity'], 'digCap': f['DigitalCapacity'],
-                'link':     True
-            })
-        except:
-            # When TX/RX frequencies mismatch and there is only one of each within an authorization number
-            # I know this is sloppy code but bite me until I figure something better out
-            l.append({
-                'licName':  f['LicenseeName'],  'servDate': f['InserviceDate'],
-                'freq':     f['Frequency'],     'bandwidth': f['OccupiedBandwidthKHz'],
-                'txLoc':    {
-                    'lat': f['Latitude'],       'long': f['Longitude'],     'alt': f['HeightAboveGroundLevel']
-                },
-                'rxLoc':    {
-                    'lat':  rx.iloc[0]['Latitude'],
-                    'long': rx.iloc[0]['Longitude'],
-                    'alt':  rx.iloc[0]['HeightAboveGroundLevel']
-                },
-                'anaCap':   f['AnalogCapacity'], 'digCap': f['DigitalCapacity'],
-                'link':     False
-            })
-            logging.info("Flagging authorization {0} as the TX ({1}) and RX ({2}) frequencies mismatch".format(
-               f['AuthorizationNumber'], f['Frequency'], rx.iloc[0]['Frequency']))
+        l.append(SiteLink(rx, **f))
     return l
 
 
 # Load all of the CSV while skipping unneeded fields
 csvstart = timer()
-csvd = pd.read_csv('TAFL_LTAF.csv', names=names, usecols=[n for n in names if n not in skips])
+csvd = pd.read_csv('TAFL_LTAF.csv', names=names.keys(), usecols=[name for name, toimport in names.items() if toimport])
 csvstop = timer()
 print("Loaded TAFL_LTAF.csv into memory in {0:2.3f} seconds".format(csvstop - csvstart))
 
