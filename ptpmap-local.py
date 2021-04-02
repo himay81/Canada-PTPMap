@@ -56,23 +56,40 @@ def linkTxRx(authNum):
     tx = txRecords[txRecords['AuthorizationNumber'] == authNum]
     rx = rxRecords[rxRecords['AuthorizationNumber'] == authNum]
     for i, f in tx.iterrows():
-        l.append({
-            'licName': f['LicenseeName'], 'servDate': f['InserviceDate'],
-            'freq': f['Frequency'], 'bandwidth': f['OccupiedBandwidthKHz'],
-            'txLoc': {
-                'lat': f['Latitude'], 'long': f['Longitude'], 'alt': f['HeightAboveGroundLevel']
+        try:
+            l.append({
+                'licName':  f['LicenseeName'],  'servDate': f['InserviceDate'],
+                'freq':     f['Frequency'],     'bandwidth': f['OccupiedBandwidthKHz'],
+                'txLoc':    {
+                    'lat':  f['Latitude'],      'long': f['Longitude'],     'alt': f['HeightAboveGroundLevel']
+                    },
+                'rxLoc':    {
+                    'lat':  rx[rx['Frequency'] == f['Frequency']].iloc[0]['Latitude'],
+                    'long': rx[rx['Frequency'] == f['Frequency']].iloc[0]['Longitude'],
+                    'alt':  rx[rx['Frequency'] == f['Frequency']].iloc[0]['HeightAboveGroundLevel']
                 },
-            'rxLoc': {
-                'lat':  rx[rx['Frequency'] == f['Frequency']].iloc[0]['Latitude'],
-                'long': rx[rx['Frequency'] == f['Frequency']].iloc[0]['Longitude'],
-                'alt':  rx[rx['Frequency'] == f['Frequency']].iloc[0]['HeightAboveGroundLevel']
-            },
-            'anaCap': f['AnalogCapacity'], 'digCap': f['DigitalCapacity']
-        })
-    # if tx['Frequency'] == rx['Frequency']:
-    #     l['link'] = True
-    # else:
-    #     l['link'] = False
+                'anaCap':   f['AnalogCapacity'], 'digCap': f['DigitalCapacity'],
+                'link':     True
+            })
+        except:
+            # When TX/RX frequencies mismatch and there is only one of each within an authorization number
+            # I know this is sloppy code but bite me until I figure something better out
+            l.append({
+                'licName':  f['LicenseeName'],  'servDate': f['InserviceDate'],
+                'freq':     f['Frequency'],     'bandwidth': f['OccupiedBandwidthKHz'],
+                'txLoc':    {
+                    'lat': f['Latitude'],       'long': f['Longitude'],     'alt': f['HeightAboveGroundLevel']
+                },
+                'rxLoc':    {
+                    'lat':  rx.iloc[0]['Latitude'],
+                    'long': rx.iloc[0]['Longitude'],
+                    'alt':  rx.iloc[0]['HeightAboveGroundLevel']
+                },
+                'anaCap':   f['AnalogCapacity'], 'digCap': f['DigitalCapacity'],
+                'link':     False
+            })
+            logging.info("Flagging authorization {0} as the TX ({1}) and RX ({2}) frequencies mismatch".format(
+               f['AuthorizationNumber'], f['Frequency'], rx.iloc[0]['Frequency']))
     return l
 
 
