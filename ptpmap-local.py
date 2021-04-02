@@ -51,10 +51,10 @@ skips = [
     'HorizontalPower', 'VerticalPower', 'StandbyTransmitterInformation'
 ]
 
-def linkTxRx(authNum):
+def linkTxRx(authNum, txRecs, rxRecs):
     l = []
-    tx = txRecords[txRecords['AuthorizationNumber'] == authNum]
-    rx = rxRecords[rxRecords['AuthorizationNumber'] == authNum]
+    tx = txRecs[txRecs['AuthorizationNumber'] == authNum]
+    rx = rxRecs[rxRecs['AuthorizationNumber'] == authNum]
     for i, f in tx.iterrows():
         try:
             l.append({
@@ -104,9 +104,6 @@ logging.info("Dropping {0} rows for lacking OccupiedBandwidthKHz values of 0".fo
     csvd[csvd['OccupiedBandwidthKHz'] == 0].shape[0]))
 csvd = csvd.drop(csvd[csvd['OccupiedBandwidthKHz'] == 0].index)
 
-# zip() latitude and longitude together to ease identifying paired links
-csvd['LatLong'] = list(zip(csvd['Latitude'], csvd['Longitude']))
-
 # Slice out all TX and RX records for Service=(2), Subservice=(200)
 txRecords = csvd[csvd['Service'] == 2][csvd['Subservice'].isin([200])][csvd['TXRX'] == 'TX']
 rxRecords = csvd[csvd['Service'] == 2][csvd['Subservice'].isin([200])][csvd['TXRX'] == 'RX']
@@ -119,16 +116,6 @@ print("Found {0} TX licenses and {1} RX licenses".format(txRecords.shape[0], rxR
 
 # Get a list of all the unique AuthorizationNumbers to iterate through
 txLicAuthNumSet = set(txRecords['AuthorizationNumber'])
-
-for idx, row in pg(txRecords.iterrows(), redirect_stdout=True):
-    try:
-        rxIdx = rxRecords[rxRecords['AuthorizationNumber'] == row['AuthorizationNumber']][
-        rxRecords['Frequency'] == row['Frequency']].index[0]
-    except:
-        logging.info("AuthorizationNumber {0} does not have any obvious RX pair. Skipping...".format(
-            row['AuthorizationNumber']))
-        continue
-    print("TX index {0} matches RX index {1}".format(idx, rxIdx))
 
 for txRecord in progressbar.progressbar(txRecords):
     link = {'tx': txRecord}
